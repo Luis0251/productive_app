@@ -31,32 +31,45 @@ export const authOptions: NextAuthOptions = {
             clientSecret: process.env.APPLE_CLIENT_SECRET!,
         }),
         CredentialsProvider({
-            name: "Credentials",
+            name: "credentials",
             credentials: {
-                name: {label: "Name", type: "text", placeholder: "Name"},	
-                email : {label: "Email", type: "email", placeholder: "Email"},
-                password: {label: "Password", type: "password", placeholder: "Password"}
+              username: { label: "Username", type: "text", placeholder: "Username" },
+              email: { label: "Email", type: "text", placeholder: "Email" },
+              password: {
+                label: "Password",
+                type: "password",
+                placeholder: "Password",
+              },
             },
             async authorize(credentials, req) {
-                if(!credentials?.email || !credentials?.password) {
-                    throw new Error("Please provide email and password"); 
-                }
-                const user = await db.user.findUnique({
+                if (!credentials?.email || !credentials.password) {
+                    throw new Error("Please enter email and password.");
+                  }
+          
+                  const user = await db.user.findUnique({
                     where: {
-                        email: credentials.email
-                    }
-                });
-                if(!user || user?.hashedPassword) {
-                    throw new Error("User was not found, please enter valid email")
-            }
-               const passwordMatch = await bcrypt.compare(credentials.password, user.hashedPassword);
-                if(!passwordMatch) {
-                    throw new Error("Invalid password")
-                }
-                return user;
+                      email: credentials.email,
+                    },
+                  });
+          
+                  if (!user || !user?.hashedPassword) {
+                    throw new Error("User was not found, Please enter valid email");
+                  }
+                  const passwordMatch = await bcrypt.compare(
+                    credentials.password,
+                    user.hashedPassword
+                  );
+          
+                  if (!passwordMatch) {
+                    throw new Error(
+                      "The entered password is incorrect, please enter the correct one."
+                    );
+                  }
+          
+                  return user;
             },
-        })
-    ],
+          }),
+        ],
     secret: process.env.NEXTAUTH_SECRET,
     callbacks: {
         async session({ session, token }) {
@@ -74,14 +87,14 @@ export const authOptions: NextAuthOptions = {
             }
          });
          if(user){
-            session.user?.image = user.image;
-            session.user?.name = user.name.toLowerCase();
+            session.user.image = user.image;
+            session.user.name = user.name.toLowerCase();
 
          }
          return session;
         },
         async jwt({ token, user }) {
-           const dbUser = await db.user.findUnique({
+           const dbUser = await db.user.findFirst({
                 where: {
                     email : token.email
                 }
